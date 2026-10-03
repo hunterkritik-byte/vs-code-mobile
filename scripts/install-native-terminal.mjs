@@ -34,6 +34,15 @@ const gradlePath = fs.existsSync(gradle) ? gradle : gradleKts;
 if (!gradlePath) throw new Error("Android app Gradle file not found");
 let g = fs.readFileSync(gradlePath,"utf8");
 if (gradlePath.endsWith(".kts")) {
+  if (!g.includes("org.jetbrains.kotlin.android")) {
+    g=g.replace(/plugins\s*\{/,"plugins {\\n    id \"org.jetbrains.kotlin.android\" version \"1.9.25"");
+  }
+} else {
+  if (!g.includes("org.jetbrains.kotlin.android")) {
+    g=g.replace(/plugins\s*\{/,"plugins {\\n    id 'org.jetbrains.kotlin.android' version '1.9.25'");
+  }
+}
+if (gradlePath.endsWith(".kts")) {
   if (!g.includes('ndkVersion')) g=g.replace(/android\s*\{/,'android {\n    ndkVersion = "27.3.13750724"');
   if (!g.includes('externalNativeBuild')) g=g.replace(/android\s*\{/,'android {\n    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }');
 } else {
