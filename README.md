@@ -38,6 +38,26 @@ In Android Studio, build and install the app on a connected device or emulator. 
 
 A debug APK is also built automatically by the **Build Android APK** workflow after relevant changes are pushed to `main`. Open the repository's Actions tab, select the successful workflow run, and download the `vs-code-mobile-debug-apk` artifact. It is a debug build for testing, not a Play Store-signed release.
 
+## Run code locally with Termux (Android)
+
+The Android APK includes a native Termux bridge for running the current JavaScript, Python, or shell file directly on the phone. This does not require the PC workspace backend for the **Run** action.
+
+1. Install Termux from the official [Termux GitHub releases](https://github.com/termux/termux-app/releases) or F-Droid. Avoid mixing Termux and its add-ons from different signing sources.
+2. Open Termux and run:
+   ```sh
+   pkg update
+   pkg install nodejs python
+   ```
+   Install any other language runtimes you need with `pkg`.
+3. In Termux, create or edit `~/.termux/termux.properties` and set:
+   ```
+   allow-external-apps = true
+   ```
+   Then fully stop and reopen Termux. Only enable this for apps you trust.
+4. Install a newly built VS Code Mobile APK. Open a `.js`, `.py`, or `.sh` file and tap **Run in Termux**. The app sends the current editor contents to `~/VSCodeMobile/` in Termux and opens a Termux session to execute it.
+
+The first Termux bridge version runs code in Termux's own terminal window; it does not stream terminal output back into the embedded xterm panel. The file explorer's create/read/save/delete operations still require the separate workspace backend. The next integration step is a user-selected shared project folder so editor files and Termux files can stay in sync without exposing a shell server.
+
 ## Connecting the Android app to a workspace backend
 
 The app needs a reachable workspace backend for real files and a terminal. To build the web bundle against a backend URL, set `VITE_WORKSPACE_API_URL` before building, for example:
