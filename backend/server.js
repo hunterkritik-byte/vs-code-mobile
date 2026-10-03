@@ -45,7 +45,7 @@ app.use("/api", (req, res, next) => {
 });
 
 function safePath(input) {
-  if (typeof input !== "string" || !input.trim() || input.includes("\\\\") || input.includes("\\0")) throw new Error("Invalid relative path");
+  if (typeof input !== "string" || !input.trim() || input.includes("\\") || input.includes("\0")) throw new Error("Invalid relative path");
   const segments = input.split("/");
   if (segments.some(part => !part || part === "." || part === ".." || blockedNames.has(part) || part.startsWith(".env") || part.startsWith("."))) throw new Error("Path contains a disallowed segment");
   const resolved = path.resolve(ROOT, input);
@@ -127,7 +127,7 @@ app.get("/workspace-preview/*", async (req, res) => {
     await ensureNoSymlink(resolved);
     if (!resolved.toLowerCase().endsWith(".html")) return res.status(415).send("Only HTML files can be previewed");
     const html = await fs.readFile(resolved, "utf8");
-    res.set("Content-Security-Policy", "default-src 'none'; img-src data: https:; style-src 'unsafe-inline' https:; script-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'");
+    res.set("Content-Security-Policy", "default-src 'none'; img-src data: https:; style-src 'unsafe-inline' https:; script-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'");
     res.type("html").send(html);
   } catch (error) { sendError(res, error); }
 });
@@ -141,7 +141,7 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
 server.on("upgrade", (req, socket, head) => {
   const origin = req.headers.origin;
   if (req.url !== "/terminal" || !origin || !allowedOrigins.has(origin)) {
-    socket.write("HTTP/1.1 403 Forbidden\\r\\n\\r\\n");
+    socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
     socket.destroy();
     return;
   }
@@ -170,7 +170,7 @@ wss.on("connection", ws => {
         });
         child.onData(data => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type:"output", data })); });
         child.onExit(({ exitCode }) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type:"exit", code:exitCode })); });
-        ws.send(JSON.stringify({ type:"ready", message:"\\r\\nWorkspace: " + ROOT + "\\r\\nShell: " + shell + "\\r\\n\\r\\n" }));
+        ws.send(JSON.stringify({ type:"ready", message:"\r\nWorkspace: " + ROOT + "\r\nShell: " + shell + "\r\n\r\n" }));
       } catch (error) {
         ws.send(JSON.stringify({ type:"error", message:"Could not start terminal: " + error.message }));
         ws.close();
