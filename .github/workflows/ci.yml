@@ -21,5 +21,7 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: npm install
+      - name: Check backend JavaScript syntax
+        run: node --check backend/server.js
       - name: Build production bundle
         run: npm run build
