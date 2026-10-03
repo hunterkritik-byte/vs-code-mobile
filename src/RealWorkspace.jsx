@@ -21,6 +21,36 @@ function fileIcon(path) {
   return path.endsWith(".js") || path.endsWith(".jsx") || path.endsWith(".ts") ? <Braces size={15}/> : <FileCode2 size={15}/>;
 }
 
+const LOCAL_FILES_KEY = "vs-code-mobile:workspace:v1";
+const STARTER_FILES = {
+  "README.md": "# My Workspace\\n\\nThis project is stored locally in VS Code Mobile.\\n",
+  "src/main.js": 'console.log("Hello from VS Code Mobile!");\\n',
+  "src/app.py": 'print("Hello from Python on Android!")\\n'
+};
+function readLocalFiles() {
+  try {
+    const stored = localStorage.getItem(LOCAL_FILES_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  const initial = { ...STARTER_FILES };
+  try { localStorage.setItem(LOCAL_FILES_KEY, JSON.stringify(initial)); } catch {}
+  return initial;
+}
+function writeLocalFiles(files) {
+  localStorage.setItem(LOCAL_FILES_KEY, JSON.stringify(files));
+}
+function normalizeLocalPath(path) {
+  if (typeof path !== "string") throw new Error("Enter a file path.");
+  const normalized = path.trim().replace(/\\\\/g, "/").replace(/^\\/+/, "");
+  if (!normalized || normalized.split("/").some(part => !part || part === "." || part === "..") || normalized.includes("\\0")) {
+    throw new Error("Invalid file path. Use a relative path such as src/main.js.");
+  }
+  return normalized;
+}
+
 export default function RealWorkspace() {
   const [files, setFiles] = useState([]);
   const [activeFile, setActiveFile] = useState("");
@@ -47,21 +77,59 @@ export default function RealWorkspace() {
   }, []);
 
   const request = useCallback(async (path, options = {}) => {
+    if (sessionToken === "local") {
+      const method = (options.method || "GET").toUpperCase();
+      const url = new URL(path, window.location.origin);
+      let localFiles = readLocalFiles();
+      if (url.pathname === "/files" && method === "GET") {
+        return { files: Object.keys(localFiles).sort() };
+      }
+      if (url.pathname === "/file") {
+        if (method === "GET") {
+          const filePath = normalizeLocalPath(url.searchParams.get("path") || "");
+          if (!Object.prototype.hasOwnProperty.call(localFiles, filePath)) throw new Error("File not found: " + filePath);
+          return { path: filePath, content: localFiles[filePath] };
+        }
+        let payload = {};
+        try { payload = options.body ? JSON.parse(options.body) : {}; } catch { throw new Error("Invalid file request."); }
+        const filePath = normalizeLocalPath(payload.path);
+        if (method === "POST") {
+          if (Object.prototype.hasOwnProperty.call(localFiles, filePath)) throw new Error("That file already exists.");
+          localFiles[filePath] = "";
+          writeLocalFiles(localFiles);
+          return { path: filePath };
+        }
+        if (method === "PUT") {
+          if (!Object.prototype.hasOwnProperty.call(localFiles, filePath)) throw new Error("File not found: " + filePath);
+          if (typeof payload.content !== "string") throw new Error("File content must be text.");
+          localFiles[filePath] = payload.content;
+          writeLocalFiles(localFiles);
+          return { path: filePath };
+        }
+        if (method === "DELETE") {
+          if (!Object.prototype.hasOwnProperty.call(localFiles, filePath)) throw new Error("File not found: " + filePath);
+          delete localFiles[filePath];
+          writeLocalFiles(localFiles);
+          return null;
+        }
+      }
+      throw new Error("This operation is not supported in local workspace mode.");
+    }
     const response = await fetch(API + path, {
       ...options,
       headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(sessionToken ? { Authorization: "Bearer " + sessionToken } : {}), ...options.headers }
     });
     const responseText = response.status === 204 ? "" : await response.text();
+    const contentType = response.headers.get("content-type") || "";
+    const preview = responseText.trim().slice(0, 80).toLowerCase();
+    const looksLikeHtml = preview.startsWith("<!doctype") || preview.startsWith("<html") || preview.startsWith("<");
     if (!response.ok) {
+      if (looksLikeHtml) throw new Error("Workspace backend is unavailable or returned a web page. Switch to local workspace mode or configure a valid backend URL.");
       throw new Error(responseText || "Request failed (" + response.status + ")");
     }
     if (response.status === 204) return null;
-    const contentType = response.headers.get("content-type") || "";
     if (!contentType.toLowerCase().includes("application/json")) {
-      const preview = responseText.trim().slice(0, 80).toLowerCase();
-      if (preview.startsWith("<!doctype") || preview.startsWith("<html") || preview.startsWith("<")) {
-        throw new Error("Workspace backend not reached: the app received an HTML page instead of JSON. Configure VITE_WORKSPACE_API_URL to a reachable workspace backend, then rebuild the app.");
-      }
+      if (looksLikeHtml) throw new Error("Workspace backend returned HTML instead of JSON. Your files can still be edited in local workspace mode.");
       throw new Error("Workspace backend returned a non-JSON response. Check the backend URL and server logs.");
     }
     try {
@@ -89,11 +157,30 @@ export default function RealWorkspace() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(API + "/session").then(response => {
-      if (!response.ok) throw new Error("Workspace backend unavailable. Start with npm run dev.");
-      return response.json();
-    }).then(data => { if (!cancelled) setSessionToken(data.token); })
-      .catch(error => { if (!cancelled) setStatus(error.message); });
+    const useLocalWorkspace = () => {
+      if (cancelled) return;
+      readLocalFiles();
+      setSessionToken("local");
+      setConnected(true);
+      setStatus(Capacitor.isNativePlatform() ? "Local files · run with Termux" : "Local workspace · saved on this device");
+    };
+    // Android uses device-local files and Termux, so it never needs a remote backend.
+    if (Capacitor.isNativePlatform()) {
+      useLocalWorkspace();
+      return () => { cancelled = true; };
+    }
+    fetch(API + "/session").then(async response => {
+      const contentType = response.headers.get("content-type") || "";
+      if (!response.ok || !contentType.toLowerCase().includes("application/json")) {
+        useLocalWorkspace();
+        return null;
+      }
+      try { return await response.json(); } catch { useLocalWorkspace(); return null; }
+    }).then(data => {
+      if (cancelled || !data) return;
+      if (typeof data.token === "string" && data.token) setSessionToken(data.token);
+      else useLocalWorkspace();
+    }).catch(() => useLocalWorkspace());
     return () => { cancelled = true; };
   }, []);
 
@@ -114,7 +201,7 @@ export default function RealWorkspace() {
   }, [sessionToken]);
 
   useEffect(() => {
-    if (!sessionToken || !terminalHostRef.current || terminalRef.current) return;
+    if (!sessionToken || sessionToken === "local" || !terminalHostRef.current || terminalRef.current) return;
     const terminal = new Terminal({
       cursorBlink:true, convertEol:true, fontFamily:"'JetBrains Mono', monospace",
       fontSize:window.innerWidth < 600 ? 11 : 12, scrollback:5000,
@@ -274,7 +361,7 @@ export default function RealWorkspace() {
         <div className="real-breadcrumb"><span>workspace</span><ChevronRight size={13}/><span>{activeFile.split("/").slice(0,-1).join("/") || "root"}</span><ChevronRight size={13}/><strong>{activeFile.split("/").pop()}</strong></div>
         <section className="real-editor"><Editor height="100%" path={activeFile || "untitled"} language={languageFor(activeFile)} theme="vs-dark" value={contents[activeFile] ?? ""} onChange={value => { setContents(current => ({ ...current, [activeFile]:value ?? "" })); setDirty(current => ({ ...current, [activeFile]:true })); }} onMount={onEditorMount} options={{ automaticLayout:true, minimap:{enabled:window.innerWidth > 900}, fontSize:13, fontFamily:"'JetBrains Mono', monospace", lineNumbers:"on", scrollBeyondLastLine:false, wordWrap:"off", tabSize:2, insertSpaces:true, smoothScrolling:true, cursorBlinking:"smooth", padding:{top:10,bottom:12}, suggestOnTriggerCharacters:true, quickSuggestions:true, bracketPairColorization:{enabled:true}, formatOnPaste:true, formatOnType:true, scrollbar:{verticalScrollbarSize:10,horizontalScrollbarSize:10}, stickyScroll:{enabled:false} }}/></section>
         <section className={"real-terminal-panel " + (terminalOpen ? "" : "collapsed")}><div className="real-terminal-header"><div><span className="muted">PROBLEMS <b>0</b></span><span className="muted">OUTPUT</span><span className="selected"><TerminalSquare size={13}/> TERMINAL</span></div><aside><button title="Focus terminal input" onClick={() => terminalRef.current?.focus()}><Plus size={14}/></button><button title="Toggle terminal" onClick={() => setTerminalOpen(value => !value)}><ChevronDown size={15}/></button></aside></div>{terminalOpen && <div className="real-terminal-host" ref={terminalHostRef} onClick={() => terminalRef.current?.focus()}/>}</section>
-        <footer className="real-statusbar"><span><GitBranch size={12}/> main</span><span>{languageFor(activeFile)}</span><span>{dirty[activeFile] ? "Unsaved changes" : "Saved"}</span><span className="real-status-spacer"/><span>{connected ? "Local workspace" : status}</span></footer>
+        <footer className="real-statusbar"><span><GitBranch size={12}/> main</span><span>{languageFor(activeFile)}</span><span>{dirty[activeFile] ? "Unsaved changes" : "Saved"}</span><span className="real-status-spacer"/><span>{connected ? (sessionToken === "local" ? "On-device files" : "Workspace connected") : status}</span></footer>
       </main>
     </div>
     <footer className="real-mobile-hint"><Smartphone size={13}/><span>Touch-friendly workspace</span><span>•</span><span>Independent open-source project</span></footer>
