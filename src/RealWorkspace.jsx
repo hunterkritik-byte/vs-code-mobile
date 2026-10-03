@@ -6,7 +6,12 @@ import { Braces, ChevronDown, ChevronRight, Code2, FileCode2, FilePlus2, Files, 
 import "@xterm/xterm/css/xterm.css";
 import "./workspace.css";
 
-const API = "/api";
+const WORKSPACE_BASE = (import.meta.env.VITE_WORKSPACE_API_URL || "").replace(/\\/$/, "");
+const API = WORKSPACE_BASE + "/api";
+function terminalUrl() {
+  const base = WORKSPACE_BASE ? new URL(WORKSPACE_BASE) : new URL(window.location.href);
+  return (base.protocol === "https:" ? "wss:" : "ws:") + "//" + base.host + "/terminal";
+}
 function languageFor(path = "") {
   const ext = path.split(".").pop().toLowerCase();
   return ({ js:"javascript", jsx:"javascript", ts:"typescript", tsx:"typescript", html:"html", css:"css", json:"json", md:"markdown", py:"python", sh:"shell", yml:"yaml", yaml:"yaml", xml:"xml", sql:"sql", rs:"rust", go:"go", java:"java", c:"c", h:"c", cpp:"cpp", hpp:"cpp" })[ext] || "plaintext";
@@ -103,8 +108,7 @@ export default function RealWorkspace() {
     terminal.loadAddon(fit);
     terminal.open(terminalHostRef.current);
     terminalRef.current = terminal;
-    const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(scheme + "//" + window.location.host + "/terminal");
+    const socket = new WebSocket(terminalUrl());
     socketRef.current = socket;
     let authenticated = false;
     socket.addEventListener("open", () => socket.send(JSON.stringify({ type:"auth", token:sessionToken })));
@@ -182,7 +186,7 @@ export default function RealWorkspace() {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) { notify("Connect the terminal to run code."); return; }
     if (activeFile.endsWith(".html")) {
-      window.open("/workspace-preview/" + activeFile.split("/").map(encodeURIComponent).join("/"), "_blank", "noopener,noreferrer");
+      window.open(WORKSPACE_BASE + "/workspace-preview/" + activeFile.split("/").map(encodeURIComponent).join("/"), "_blank", "noopener,noreferrer");
     } else if (activeFile.endsWith(".js")) {
       socket.send(JSON.stringify({ type:"input", data:"node \"" + activeFile.replace(/["\\]/g, "") + "\"\r" }));
     } else {
