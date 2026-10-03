@@ -1,0 +1,23 @@
+name: Bug report
+description: Report a reproducible problem
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Give exact steps to reproduce the issue.
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version/device
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Remove secrets and personal data before posting.
