@@ -15,27 +15,28 @@ const ptyJava=path.join(android,"app","src","main","java","dev","hunterkritik","
 fs.mkdirSync(ptyJava,{recursive:true});
 fs.copyFileSync(path.join(ptyDir,"PtyBridge.java"),path.join(ptyJava,"PtyBridge.java"));
 fs.copyFileSync(path.join(ptyDir,"CMakeLists.txt"),path.join(ptySrc,"CMakeLists.txt"));
-function findMainActivity(dir){const stack=[dir];while(stack.length){const cur=stack.pop();for(const e of fs.readdirSync(cur,{withFileTypes:true})){const full=path.join(cur,e.name);if(e.isDirectory()) stack.push(full); else if(e.name==="MainActivity.java"||e.name==="MainActivity.kt") return full;}}return null;}
+function findMainActivity(dir){const stack=[dir];while(stack.length){const cur=stack.pop();for(const e of fs.readdirSync(cur,{withFileTypes:true})){const full=path.join(cur,e.name);if(e.isDirectory())stack.push(full);else if(e.name==="MainActivity.java")return full;}}return null;}
 const main=findMainActivity(path.join(android,"app","src","main"));
-if(!main) throw new Error("Could not find Capacitor MainActivity");
-let sourceText=fs.readFileSync(main,"utf8");
-const kotlin=main.endsWith(".kt");
-const importLine=kotlin?"import dev.hunterkritik.vsmobile.terminal.NativeTerminalPlugin":"import dev.hunterkritik.vsmobile.terminal.NativeTerminalPlugin;";
-if(!sourceText.includes("NativeTerminalPlugin")) {
-  const pos=sourceText.indexOf("\n");
-  sourceText=sourceText.slice(0,pos+1)+importLine+"\n"+sourceText.slice(pos+1);
+if(!main) throw new Error("Could not find Capacitor MainActivity.java");
+const existing=fs.readFileSync(main,"utf8");
+const pkg=(existing.match(/^package\s+([^;]+);/m)||[])[1];
+if(!pkg) throw new Error("Could not determine Android package from MainActivity.java");
+const stableMain=`package ${pkg};
+
+import android.os.Bundle;
+import com.getcapacitor.BridgeActivity;
+import dev.hunterkritik.vsmobile.terminal.NativeTerminalPlugin;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(NativeTerminalPlugin.class);
+        super.onCreate(savedInstanceState);
+    }
 }
-if(!sourceText.includes("registerPlugin(NativeTerminalPlugin")) {
-  const classPos=sourceText.indexOf("class MainActivity");
-  const bodyPos=classPos>=0?sourceText.indexOf("{",classPos):-1;
-  if(bodyPos<0) throw new Error("Could not locate MainActivity class body");
-  const block=kotlin
-    ? "\n    override fun onCreate(savedInstanceState: android.os.Bundle?) {\n        super.onCreate(savedInstanceState)\n        registerPlugin(NativeTerminalPlugin::class.java)\n    }"
-    : "\n    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        registerPlugin(NativeTerminalPlugin.class);\n    }";
-  sourceText=sourceText.slice(0,bodyPos+1)+block+sourceText.slice(bodyPos+1);
-}
-fs.writeFileSync(main,sourceText);
-console.log("NativeTerminalPlugin installed and registered in "+main);
+`;
+fs.writeFileSync(main,stableMain);
+console.log("NativeTerminalPlugin registered in "+main+" for package "+pkg);
 
 console.log("NativeTerminalPlugin installed into "+main);
 const gradle = path.join(android,"app","build.gradle");
