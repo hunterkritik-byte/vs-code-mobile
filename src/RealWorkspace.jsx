@@ -303,7 +303,7 @@ export default function RealWorkspace() {
         const runtime = activeFile.endsWith(".py") ? "python" : activeFile.endsWith(".sh") ? "bash" : "node";
         const command = "mkdir -p \"$HOME/VSCodeMobile\" && printf '%s' '" + encoded + "' | base64 -d > \"$HOME/VSCodeMobile/" + filename + "\" && cd \"$HOME/VSCodeMobile\" && " + runtime + " \"" + filename + "\"; printf '\\n[VS Code Mobile] Command finished. Files are in ~/VSCodeMobile.\\n'; exec bash -l";
         await TermuxBridge.runCommand({ command });
-        notify("Opening Termux to run " + filename);
+        notify("Switched to Termux. View output and errors in the Termux terminal.");
       } catch {
         notify("Termux unavailable. Install Termux and enable external app commands in its settings.");
       }
