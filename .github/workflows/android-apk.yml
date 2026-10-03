@@ -40,6 +40,8 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm install
       - name: Build web app
+        env:
+          VITE_WORKSPACE_API_URL: ${{ vars.WORKSPACE_API_URL }}
         run: npm run build
       - name: Generate Android project and sync web assets
         run: |
