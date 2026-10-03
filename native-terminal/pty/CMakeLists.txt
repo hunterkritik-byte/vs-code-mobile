@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(vsmobile_pty)
+set(CMAKE_CXX_STANDARD 17)
+add_library(vsmobile_pty SHARED vsmobile_pty.cpp)
+target_compile_options(vsmobile_pty PRIVATE -Wall -Wextra -Werror)
+find_library(log-lib log)
+target_link_libraries(vsmobile_pty ${log-lib})
