@@ -1,16 +1,12 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - "src/**"
-      - "public/**"
-      - "index.html"
-      - "package.json"
-      - "capacitor.config.json"
-      - ".github/workflows/android-apk.yml"
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,112 +14,55 @@ permissions:
 jobs:
   build-debug-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-      - name: Install required Android SDK packages
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
-          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-        run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - name: Install JavaScript dependencies
-        run: npm install
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build web app
-        env:
-          VITE_WORKSPACE_API_URL: ${{ vars.WORKSPACE_API_URL }}
         run: npm run build
-      - name: Generate Android project and sync web assets
+
+      - name: Generate Android project
         run: |
-          npx cap add android
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
           npx cap sync android
-          mkdir -p android/app/src/main/java/dev/hunterkritik/vscodemobile
-          cat > android/app/src/main/java/dev/hunterkritik/vscodemobile/TermuxBridgePlugin.java <<'JAVA'
-          package dev.hunterkritik.vscodemobile;
 
-          import android.content.Intent;
-          import com.getcapacitor.JSObject;
-          import com.getcapacitor.Plugin;
-          import com.getcapacitor.PluginCall;
-          import com.getcapacitor.PluginMethod;
-          import com.getcapacitor.annotation.CapacitorPlugin;
+      - name: Install native terminal
+        run: npm run android:native
 
-          @CapacitorPlugin(name = "TermuxBridge")
-          public class TermuxBridgePlugin extends Plugin {
-              @PluginMethod
-              public void runCommand(PluginCall call) {
-                  String command = call.getString("command");
-                  if (command == null || command.trim().isEmpty()) {
-                      call.reject("A command is required");
-                      return;
-                  }
-                  try {
-                      getContext().getPackageManager().getPackageInfo("com.termux", 0);
-                      Intent intent = new Intent("com.termux.RUN_COMMAND");
-                      intent.setClassName("com.termux", "com.termux.app.RunCommandService");
-                      intent.putExtra("com.termux.RUN_COMMAND_PATH", "/data/data/com.termux/files/usr/bin/bash");
-                      intent.putExtra("com.termux.RUN_COMMAND_ARGUMENTS", new String[] { "-lc", command });
-                      intent.putExtra("com.termux.RUN_COMMAND_WORKDIR", "/data/data/com.termux/files/home");
-                      intent.putExtra("com.termux.RUN_COMMAND_BACKGROUND", false);
-                      getContext().startService(intent);
-                      // Bring Termux to the foreground so stdout/stderr are visible.
-                      Intent launchTermux = getContext().getPackageManager().getLaunchIntentForPackage("com.termux");
-                      if (launchTermux != null) {
-                          launchTermux.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                          getContext().startActivity(launchTermux);
-                      }
-                      JSObject result = new JSObject();
-                      result.put("started", true);
-                      call.resolve(result);
-                  } catch (Exception error) {
-                      call.reject("Could not launch Termux. Install Termux and enable allow-external-apps.", error);
-                  }
-              }
-          }
-          JAVA
-          cat > android/app/src/main/java/dev/hunterkritik/vscodemobile/MainActivity.java <<'JAVA'
-          package dev.hunterkritik.vscodemobile;
-
-          import android.os.Bundle;
-          import com.getcapacitor.BridgeActivity;
-
-          public class MainActivity extends BridgeActivity {
-              @Override
-              public void onCreate(Bundle savedInstanceState) {
-                  registerPlugin(TermuxBridgePlugin.class);
-                  super.onCreate(savedInstanceState);
-              }
-          }
-          JAVA
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("android/app/src/main/AndroidManifest.xml")
-          s = p.read_text()
-          marker = "    <application"
-          additions = '    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />\n    <queries><package android:name="com.termux" /></queries>\n'
-          if "com.termux.permission.RUN_COMMAND" not in s:
-              s = s.replace(marker, additions + marker, 1)
-          p.write_text(s)
-          PY
-      - name: Build installable debug APK
+      - name: Build debug APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Verify APK
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum android/app/build/outputs/apk/debug/app-debug.apk | tee android/app/build/outputs/apk/debug/SHA256SUMS.txt
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: vs-code-mobile-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
