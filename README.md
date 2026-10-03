@@ -184,3 +184,17 @@ The project is independent and is **not affiliated with Microsoft**. Microsoft, 
 Issues and pull requests are welcome. Include your OS, Node.js version, Android version/device, reproduction steps, and relevant logs.
 
 Licensed under MIT; see [LICENSE](LICENSE).
+
+## Project readiness
+
+- MIT licensed open source project
+- Security policy and private vulnerability reporting
+- Dependabot dependency monitoring
+- OpenSSF Scorecard workflow
+- Contribution and code-of-conduct policies
+- Release and signing checklist
+- Accessibility roadmap
+- Native Android terminal roadmap
+- Sponsorship and partnership documentation
+
+See [docs/MICROSOFT-PARTNERSHIP.md](docs/MICROSOFT-PARTNERSHIP.md) for the current partnership brief.
