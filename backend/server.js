@@ -22,7 +22,7 @@ try { await fs.access(path.join(ROOT, "src/main.js")); }
 catch { await fs.writeFile(path.join(ROOT, "src/main.js"), 'function greet(name) {\n  return "Hello, " + name + "!";\n}\n\nconsole.log(greet("developer"));\n'); }
 
 app.disable("x-powered-by");
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: false }));
 app.use(express.json({ limit: "1mb" }));
 app.use((req, res, next) => {
   const origin = req.headers.origin;
