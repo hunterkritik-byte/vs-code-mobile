@@ -1,0 +1,2 @@
+package dev.hunterkritik.vsmobile.terminal.pty;
+public final class PtyBridge { static { System.loadLibrary("vsmobile_pty"); } private PtyBridge(){} public static native long start(String cwd,String home,String path,String term,int cols,int rows); public static native int write(long handle,byte[] data); public static native byte[] read(long handle,int maxBytes); public static native boolean resize(long handle,int cols,int rows); public static native int stop(long handle); }
