@@ -1,17 +1,90 @@
-# VS Code Mobile
+# VS Code Mobile — Independent Mobile Development Environment
 
-A touch-friendly coding workspace for Android-sized screens and the web. This is an independent community project, not an official Microsoft or Visual Studio Code product.
+> **Sponsor & partnership inquiries:** [hunterkritik@gmail.com](mailto:hunterkritik@gmail.com)
 
-## Features
+A community-built, touch-first development environment for Android and the web. The project combines a mobile code editor, workspace filesystem, terminal UI, and local execution into one independent developer tool.
+
+**This is an independent project and is not an official Microsoft or Visual Studio Code product.**
+
+## Why sponsor this project?
+
+The goal is to make serious software development possible from a phone without requiring a desktop computer or a Termux installation.
+
+Sponsorship directly supports:
+
+- building the **independent Android terminal runtime**;
+- improving the mobile coding and terminal experience;
+- native process/PTY integration and shell tooling;
+- security hardening and sandboxing;
+- Android releases, documentation, testing, and accessibility;
+- open-source maintenance and contributor infrastructure.
+
+For sponsorship, engineering collaboration, infrastructure support, or partnership discussions, contact **hunterkritik@gmail.com**.
+
+## Project direction
+
+The project is moving away from third-party terminal-app dependencies and toward its own terminal stack.
+
+### Terminal architecture
+
+The terminal is designed as an application-owned stack:
+
+```
+Android / Web UI
+      │
+      ▼
+Terminal View (xterm-compatible UI)
+      │
+      ▼
+Terminal Session Manager
+      │
+      ├── stdin/stdout/stderr transport
+      ├── resize + lifecycle handling
+      ├── environment + working directory
+      └── process supervision
+      │
+      ▼
+Native Android process layer
+      │
+      ▼
+Android shell / bundled developer runtime
+```
+
+**There is no Termux runtime, Termux bridge, or Termux add-on dependency in the target architecture.**
+
+The terminal UI and session-management layer are project-owned. The Android implementation uses native application processes rather than launching a separate terminal application.
+
+> The current implementation is being developed incrementally. A full PTY implementation, job control, signal handling, isolated userspace, and bundled language runtimes are roadmap items; they should not be described as complete until they are implemented and tested.
+
+## Current features
 
 - Monaco Editor with syntax highlighting, suggestions, multiple tabs, and editor shortcuts.
-- xterm.js terminal connected to a real PTY shell through WebSockets.
-- File explorer with create, read, edit, save, delete, and refresh operations on the workspace filesystem.
-- JavaScript execution through Node.js and sandboxed HTML preview.
+- xterm.js terminal interface.
+- Workspace filesystem with create, read, edit, save, delete, and refresh operations.
+- JavaScript execution through Node.js in the desktop/local development environment.
+- Sandboxed HTML preview.
 - Responsive desktop/mobile layout.
-- Capacitor Android wrapper and GitHub Actions workflow that builds an installable debug APK.
+- Capacitor Android application packaging.
+- GitHub Actions Android build workflow.
 
-## Run the real workspace locally
+## Android terminal roadmap
+
+The Android terminal is being built as a first-class component instead of depending on Termux:
+
+- [x] Project-owned terminal UI.
+- [x] Project-owned terminal session abstraction.
+- [x] Native Android process execution prototype.
+- [ ] Full PTY transport.
+- [ ] Terminal resize and window-size propagation.
+- [ ] Signal and process-group handling.
+- [ ] Persistent terminal sessions.
+- [ ] Bundled POSIX-compatible userspace.
+- [ ] Package/runtime manager designed for this project.
+- [ ] Per-workspace filesystem isolation.
+- [ ] Resource limits and process cleanup.
+- [ ] Security review before exposing remote execution features.
+
+## Run the workspace locally
 
 Requires Node.js 20+ and a native build toolchain for `node-pty` if a prebuilt binary is unavailable.
 
@@ -21,11 +94,18 @@ cp .env.example .env
 npm run dev
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env`. Open the Vite URL printed in the terminal, normally `http://localhost:5173`. The backend creates a `workspace/` folder. Set `WORKSPACE_DIR` in `.env` to edit a different local project.
+On Windows PowerShell:
 
-## Build the Android app
+```powershell
+Copy-Item .env.example .env
+npm run dev
+```
 
-Install Android Studio and its Android SDK, then run:
+The backend creates a `workspace/` folder. Set `WORKSPACE_DIR` in `.env` to edit a different local project.
+
+## Build Android
+
+Install Android Studio and the Android SDK:
 
 ```bash
 npm install
@@ -34,52 +114,62 @@ npm run android:sync
 npm run android:open
 ```
 
-In Android Studio, build and install the app on a connected device or emulator. The native project is generated in `android/` and is not required for the web-only build.
+The Android project is generated in `android/`. A debug APK is also produced by the GitHub Actions Android workflow after relevant changes.
 
-A debug APK is also built automatically by the **Build Android APK** workflow after relevant changes are pushed to `main`. Open the repository's Actions tab, select the successful workflow run, and download the `vs-code-mobile-debug-apk` artifact. It is a debug build for testing, not a Play Store-signed release.
+## No Termux dependency
 
-## Run code locally with Termux (Android)
+The Android product is **not based on Termux**.
 
-The Android APK includes a native Termux bridge for running the current JavaScript, Python, or shell file directly on the phone. This does not require the PC workspace backend for the **Run** action.
+Older development builds experimented with a Termux execution bridge. That approach is no longer part of the target architecture. New terminal functionality must use the application's own terminal/session layer and native Android process integration.
 
-1. Install Termux from the official [Termux GitHub releases](https://github.com/termux/termux-app/releases) or F-Droid. Avoid mixing Termux and its add-ons from different signing sources.
-2. Open Termux and run:
-   ```sh
-   pkg update
-   pkg install nodejs python
-   ```
-   Install any other language runtimes you need with `pkg`.
-3. In Termux, create or edit `~/.termux/termux.properties` and set:
-   ```
-   allow-external-apps = true
-   ```
-   Then fully stop and reopen Termux. Only enable this for apps you trust.
-4. Install a newly built VS Code Mobile APK. Open a `.js`, `.py`, or `.sh` file and tap **Run in Termux**. The app sends the current editor contents to `~/VSCodeMobile/` in Termux and opens a Termux session to execute it.
+Do not install Termux to use the terminal features described by the project roadmap.
 
-The Termux bridge runs code in Termux's own terminal window; it does not stream terminal output back into the embedded xterm panel. File create/read/edit/save/delete now work in local mode without a backend, and changes persist in the app's WebView storage. The current Run action sends the active editor contents to a file in `~/VSCodeMobile/` in Termux. This is a copy for execution, not a shared folder: edits made directly in Termux do not automatically sync back into the editor.
+## Local workspace backend
 
-## Connecting the Android app to a workspace backend
+The optional Node.js workspace backend provides a shared filesystem, interactive desktop terminal, and HTML preview for local development.
 
-The optional workspace backend provides a shared filesystem, embedded interactive terminal, and HTML preview. Without it, the editor automatically falls back to a local workspace saved in browser/app storage; this mode supports file create/read/edit/save/delete but does not provide an embedded shell. To build the web bundle against a backend URL, set `VITE_WORKSPACE_API_URL` before building, for example:
+The backend is intentionally a **trusted single-user development server**. It launches commands with the permissions of the OS user running the backend. Do not expose it directly to the public internet.
 
-```bash
-VITE_WORKSPACE_API_URL=https://your-workspace-host.example npm run build
-```
-
-Use the same environment variable when building the APK so its frontend connects to that backend. The value is the backend origin only (no `/api` suffix). For Windows PowerShell, use `$env:VITE_WORKSPACE_API_URL="https://your-workspace-host.example"` before the build.
-
-**Important:** the included backend is a trusted, single-user local development backend, not a safe public cloud service. It launches a shell with the server OS user's permissions, and its current session token is shared by that backend process. Do not expose it directly to the internet or put it behind a public URL for multiple users. A genuinely hosted multi-user workspace requires per-user authentication and isolated containers/VMs with resource limits, storage quotas, network policy, and secret management. Until that hardened service exists and is deployed, the APK packaging is real, but remote multi-user terminal service is not provided out of the box.
-
-For a local Android device, the backend host must be reachable from the phone over the same network and configured to allow the app's `https://localhost` origin. Configure `WORKSPACE_HOST`, `WORKSPACE_PORT`, `WORKSPACE_DIR`, and `WORKSPACE_ORIGINS` in the backend's `.env`; do not bind to a public interface unless you have separately secured the service. Note that Android's `localhost` refers to the phone itself, not your PC.
+A future hosted multi-user service requires authentication, isolated containers/VMs, resource limits, storage quotas, network policy, and secret management.
 
 ## Web deployment
 
-A static Vercel deployment can serve the editor UI and local-first file editor, but Vercel static hosting does not run this Node.js PTY backend. In static mode, files are saved in that browser's local storage and are not automatically synced across browsers/devices. Set `VITE_WORKSPACE_API_URL` only to a separately hosted, secured backend if you need a shared filesystem and embedded terminal.
+The static web application can provide the editor and local-first workspace UI. A separately hosted backend is required for a shared server-side filesystem and server-side terminal.
 
-## Project scope and branding
+## Security
 
-This project uses the separately published Monaco Editor and xterm.js libraries rather than copying the full VS Code desktop application. It is an independent project and is not affiliated with Microsoft. VS Code product branding and Marketplace access have separate restrictions.
+Security is a core project requirement. Terminal execution is a privileged capability and must not be treated as safe merely because it is embedded inside a UI.
 
-## Contributing and license
+Before production remote execution, the project must implement:
 
-Issues and pull requests are welcome. Include your OS, Node.js version, device/browser, and reproduction steps. Licensed under MIT; see [LICENSE](LICENSE).
+- authentication and authorization;
+- per-user isolation;
+- filesystem boundaries;
+- CPU/memory/process limits;
+- network restrictions;
+- secret isolation;
+- command/process lifecycle controls;
+- audit logging where appropriate;
+- security testing and review.
+
+Report security issues privately through the repository's security policy rather than publishing an exploitable proof of concept.
+
+## Sponsorship
+
+This project is independently maintained and welcomes sponsorship from individuals, companies, cloud providers, hardware vendors, and developer-tool organizations.
+
+Sponsor-supported work will prioritize the native Android terminal, security hardening, testing infrastructure, release automation, and documentation.
+
+**Sponsorship / partnerships:** hunterkritik@gmail.com
+
+## Branding
+
+This project uses separately published Monaco Editor and xterm.js libraries rather than copying the full VS Code desktop application.
+
+The project is independent and is **not affiliated with Microsoft**. Microsoft, Visual Studio Code, and related marks remain the property of their respective owners.
+
+## Contributing
+
+Issues and pull requests are welcome. Include your OS, Node.js version, Android version/device, reproduction steps, and relevant logs.
+
+Licensed under MIT; see [LICENSE](LICENSE).
