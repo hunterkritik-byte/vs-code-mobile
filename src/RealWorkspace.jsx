@@ -326,9 +326,9 @@ export default function RealWorkspace() {
         return;
       }
       const safeFile = activeFile.replace(/[^a-zA-Z0-9._/-]/g, "");
-      const command = activeFile.endsWith(".js") ? "node \\"" + safeFile + "\\"\\r"
-        : activeFile.endsWith(".py") ? "python \\"" + safeFile + "\\"\\r"
-        : activeFile.endsWith(".sh") ? "sh \\"" + safeFile + "\\"\\r"
+      const command = activeFile.endsWith(".js") ? "node " + safeFile + "\r"
+        : activeFile.endsWith(".py") ? "python " + safeFile + "\r"
+        : activeFile.endsWith(".sh") ? "sh " + safeFile + "\r"
         : null;
       if (!command) {
         notify("Run supports JavaScript, Python, and shell files when the corresponding runtime exists on the device.");
