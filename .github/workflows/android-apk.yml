@@ -56,8 +56,8 @@ jobs:
 
       - name: Verify native Kotlin sources
         run: |
-          test -s android/app/src/main/kotlin/dev/hunterkritik/vsmobile/terminal/NativeTerminalPlugin.kt
-          test -s android/app/src/main/kotlin/dev/hunterkritik/vsmobile/terminal/pty/PtyBridge.kt
+          test -s android/app/src/main/java/dev/hunterkritik/vsmobile/terminal/NativeTerminalPlugin.java
+          test -s android/app/src/main/java/dev/hunterkritik/vsmobile/terminal/pty/PtyBridge.java
           test -s android/app/src/main/cpp/vsmobile_pty.cpp
           grep -R "org.jetbrains.kotlin.android\|kotlin-android" android/app/build.gradle android/app/build.gradle.kts android/build.gradle 2>/dev/null || true
 
