@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import Editor from "@monaco-editor/react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -197,13 +198,37 @@ export default function RealWorkspace() {
 
   const runFile = async () => {
     if (!activeFile) return;
+    if (Capacitor.isNativePlatform()) {
+      if (!activeFile.endsWith(".js") && !activeFile.endsWith(".py") && !activeFile.endsWith(".sh")) {
+        notify("Termux Run currently supports JavaScript, Python, and shell files.");
+        return;
+      }
+      try {
+        const TermuxBridge = registerPlugin("TermuxBridge");
+        const source = contents[activeFile] ?? "";
+        const bytes = new TextEncoder().encode(source);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        }
+        const encoded = btoa(binary);
+        const filename = (activeFile.split("/").pop() || "main.js").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const runtime = activeFile.endsWith(".py") ? "python" : activeFile.endsWith(".sh") ? "bash" : "node";
+        const command = "mkdir -p \"$HOME/VSCodeMobile\" && printf '%s' '" + encoded + "' | base64 -d > \"$HOME/VSCodeMobile/" + filename + "\" && cd \"$HOME/VSCodeMobile\" && " + runtime + " \"" + filename + "\"; printf '\\n[VS Code Mobile] Command finished. Files are in ~/VSCodeMobile.\\n'; exec bash -l";
+        await TermuxBridge.runCommand({ command });
+        notify("Opening Termux to run " + filename);
+      } catch {
+        notify("Termux unavailable. Install Termux and enable external app commands in its settings.");
+      }
+      return;
+    }
     await saveFile(activeFile);
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) { notify("Connect the terminal to run code."); return; }
     if (activeFile.endsWith(".html")) {
       window.open(WORKSPACE_BASE + "/workspace-preview/" + activeFile.split("/").map(encodeURIComponent).join("/"), "_blank", "noopener,noreferrer");
     } else if (activeFile.endsWith(".js")) {
-      socket.send(JSON.stringify({ type:"input", data:"node \"" + activeFile.replace(/["\\]/g, "") + "\"\r" }));
+      socket.send(JSON.stringify({ type:"input", data:"node \"" + activeFile.replace(/["\\\\]/g, "") + "\"\\r" }));
     } else {
       notify("Use the terminal to run this file with its language runtime.");
     }
