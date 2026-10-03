@@ -202,7 +202,7 @@ export default function RealWorkspace() {
   }, [sessionToken]);
 
   useEffect(() => {
-    if (!sessionToken || sessionToken === "local" || !terminalHostRef.current || terminalRef.current) return;
+    if (!sessionToken || !terminalHostRef.current || terminalRef.current) return;
     const terminal = new Terminal({
       cursorBlink:true, convertEol:true, fontFamily:"'JetBrains Mono', monospace",
       fontSize:window.innerWidth < 600 ? 11 : 12, scrollback:5000,
@@ -212,6 +212,33 @@ export default function RealWorkspace() {
     terminal.loadAddon(fit);
     terminal.open(terminalHostRef.current);
     terminalRef.current = terminal;
+    if (Capacitor.isNativePlatform()) {
+      let running = true;
+      const outputListener = NativeTerminal.addListener("output", ({ data }) => terminal.write(data || ""));
+      const exitListener = NativeTerminal.addListener("exit", ({ code }) => terminal.write("\r\n\x1b[90mProcess exited (" + code + ").\x1b[0m\r\n"));
+      const errorListener = NativeTerminal.addListener("error", ({ message }) => terminal.write("\r\n\x1b[31m" + (message || "Terminal error") + "\x1b[0m\r\n"));
+      const inputListener = terminal.onData(data => { if (running) NativeTerminal.write({ data }); });
+      NativeTerminal.start({ cwd: "" }).then(result => {
+        if (!running) return;
+        setStatus("Native terminal connected");
+        terminal.write(result?.message || "\r\nNative terminal ready.\r\n");
+        fit.fit();
+      }).catch(error => {
+        if (!running) return;
+        setStatus("Native terminal failed");
+        terminal.write("\r\n\x1b[31mNative terminal failed: " + (error?.message || error) + "\x1b[0m\r\n");
+      });
+      return () => {
+        running = false;
+        NativeTerminal.stop().catch(() => {});
+        outputListener.remove();
+        exitListener.remove();
+        errorListener.remove();
+        inputListener.dispose();
+        terminal.dispose();
+        terminalRef.current = null;
+      };
+    }
     const socket = new WebSocket(terminalUrl());
     socketRef.current = socket;
     let authenticated = false;
