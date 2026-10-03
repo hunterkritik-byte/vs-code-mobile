@@ -31,7 +31,7 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-
+\n      - name: Install Android native build tools\n        run: sdkmanager "ndk;27.3.13750724" "cmake;3.22.1"\n
       - name: Build web app
         run: npm run build
 
