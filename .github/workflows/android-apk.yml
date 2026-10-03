@@ -56,8 +56,12 @@ jobs:
 
       - name: Verify NativeTerminal registration
         run: |
-          grep -R "registerPlugin(NativeTerminalPlugin" android/app/src/main/java android/app/src/main/kotlin
-          grep -R '@CapacitorPlugin(name = "NativeTerminal")' android/app/src/main/java android/app/src/main/kotlin
+          echo "=== MainActivity ==="
+          find android/app/src/main -type f -name 'MainActivity.*' -print -exec sed -n '1,120p' {} \;
+          echo "=== NativeTerminal plugin ==="
+          find android/app/src/main -type f -name 'NativeTerminalPlugin.java' -print -exec sed -n '1,80p' {} \;
+          test -n "$(find android/app/src/main -type f -name 'MainActivity.*' -print -exec grep -l 'registerPlugin(NativeTerminalPlugin' {} \;)"
+          test -n "$(find android/app/src/main -type f -name 'NativeTerminalPlugin.java' -print -exec grep -l '@CapacitorPlugin(name = "NativeTerminal")' {} \;)"
 
       - name: Verify native Kotlin sources
         run: |
