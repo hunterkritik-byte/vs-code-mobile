@@ -23,9 +23,9 @@ function fileIcon(path) {
 
 const LOCAL_FILES_KEY = "vs-code-mobile:workspace:v1";
 const STARTER_FILES = {
-  "README.md": "# My Workspace\\n\\nThis project is stored locally in VS Code Mobile.\\n",
-  "src/main.js": 'console.log("Hello from VS Code Mobile!");\\n',
-  "src/app.py": 'print("Hello from Python on Android!")\\n'
+  "README.md": "# My Workspace\n\nThis project is stored locally in VS Code Mobile.\n",
+  "src/main.js": 'console.log("Hello from VS Code Mobile!");\n',
+  "src/app.py": 'print("Hello from Python on Android!")\n'
 };
 function readLocalFiles() {
   try {
@@ -44,8 +44,8 @@ function writeLocalFiles(files) {
 }
 function normalizeLocalPath(path) {
   if (typeof path !== "string") throw new Error("Enter a file path.");
-  const normalized = path.trim().replace(/\\\\/g, "/").replace(/^\\/+/, "");
-  if (!normalized || normalized.split("/").some(part => !part || part === "." || part === "..") || normalized.includes("\\0")) {
+  const normalized = path.trim().replace(/\\/g, "/").replace(/^\/+/, "");
+  if (!normalized || normalized.split("/").some(part => !part || part === "." || part === "..") || normalized.includes("\0")) {
     throw new Error("Invalid file path. Use a relative path such as src/main.js.");
   }
   return normalized;
