@@ -104,7 +104,7 @@ jobs:
           p = Path("android/app/src/main/AndroidManifest.xml")
           s = p.read_text()
           marker = "    <application"
-          additions = '    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />\\n    <queries><package android:name="com.termux" /></queries>\\n'
+          additions = '    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />\n    <queries><package android:name="com.termux" /></queries>\n'
           if "com.termux.permission.RUN_COMMAND" not in s:
               s = s.replace(marker, additions + marker, 1)
           p.write_text(s)
