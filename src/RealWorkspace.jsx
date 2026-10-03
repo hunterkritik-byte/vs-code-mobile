@@ -315,6 +315,7 @@ export default function RealWorkspace() {
     if (!activeFile) return;
     if (Capacitor.isNativePlatform()) {
       await saveFile(activeFile);
+      try { await NativeTerminal.writeFile({ path: activeFile, content: contents[activeFile] ?? "" }); } catch (error) { notify("Could not sync file to native workspace: " + (error?.message || error)); return; }
       if (!terminalRef.current) {
         notify("Native terminal is not connected.");
         return;
