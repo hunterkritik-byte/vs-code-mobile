@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"npm:backend\" \"npm:frontend\"",
-    "frontend": "vite --host 0.0.0.0",
+    "frontend": "vite --host 127.0.0.1",
     "backend": "node backend/server.js",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
