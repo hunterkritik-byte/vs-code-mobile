@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Capacitor, registerPlugin } from "@capacitor/core";
+const NativeTerminal = registerPlugin("NativeTerminal");
 import Editor from "@monaco-editor/react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -162,9 +163,9 @@ export default function RealWorkspace() {
       readLocalFiles();
       setSessionToken("local");
       setConnected(true);
-      setStatus(Capacitor.isNativePlatform() ? "Local files · run with Termux" : "Local workspace · saved on this device");
+      setStatus(Capacitor.isNativePlatform() ? "On-device terminal ready" : "Local workspace · saved on this device");
     };
-    // Android uses device-local files and Termux, so it never needs a remote backend.
+    // Android uses the application-owned native terminal and device-local files, so it never needs a remote backend.
     if (Capacitor.isNativePlatform()) {
       useLocalWorkspace();
       return () => { cancelled = true; };
@@ -286,27 +287,23 @@ export default function RealWorkspace() {
   const runFile = async () => {
     if (!activeFile) return;
     if (Capacitor.isNativePlatform()) {
-      if (!activeFile.endsWith(".js") && !activeFile.endsWith(".py") && !activeFile.endsWith(".sh")) {
-        notify("Termux Run currently supports JavaScript, Python, and shell files.");
+      await saveFile(activeFile);
+      if (!terminalRef.current) {
+        notify("Native terminal is not connected.");
         return;
       }
-      try {
-        const TermuxBridge = registerPlugin("TermuxBridge");
-        const source = contents[activeFile] ?? "";
-        const bytes = new TextEncoder().encode(source);
-        let binary = "";
-        for (let i = 0; i < bytes.length; i += 0x8000) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-        }
-        const encoded = btoa(binary);
-        const filename = (activeFile.split("/").pop() || "main.js").replace(/[^a-zA-Z0-9._-]/g, "_");
-        const runtime = activeFile.endsWith(".py") ? "python" : activeFile.endsWith(".sh") ? "bash" : "node";
-        const command = "mkdir -p \"$HOME/VSCodeMobile\" && printf '%s' '" + encoded + "' | base64 -d > \"$HOME/VSCodeMobile/" + filename + "\" && cd \"$HOME/VSCodeMobile\" && " + runtime + " \"" + filename + "\"; printf '\\n[VS Code Mobile] Command finished. Files are in ~/VSCodeMobile.\\n'; exec bash -l";
-        await TermuxBridge.runCommand({ command });
-        notify("Switched to Termux. View output and errors in the Termux terminal.");
-      } catch {
-        notify("Termux unavailable. Install Termux and enable external app commands in its settings.");
+      const safeFile = activeFile.replace(/[^a-zA-Z0-9._/-]/g, "");
+      const command = activeFile.endsWith(".js") ? "node \\"" + safeFile + "\\"\\r"
+        : activeFile.endsWith(".py") ? "python \\"" + safeFile + "\\"\\r"
+        : activeFile.endsWith(".sh") ? "sh \\"" + safeFile + "\\"\\r"
+        : null;
+      if (!command) {
+        notify("Run supports JavaScript, Python, and shell files when the corresponding runtime exists on the device.");
+        return;
       }
+      NativeTerminal.write({ data: command });
+      terminalRef.current.focus();
+      notify("Running in the built-in native terminal.");
       return;
     }
     if (sessionToken === "local") {
@@ -366,10 +363,10 @@ export default function RealWorkspace() {
       </aside>
       {sidebarOpen && <button className="real-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close explorer"/>}
       <main className="real-editor-area">
-        <div className="real-tabbar">{openFiles.map(path => <button key={path} className={"real-tab " + (activeFile === path ? "selected" : "")} onClick={() => loadFile(path).catch(e => notify(e.message))}>{fileIcon(path)}<span>{path.split("/").pop()}</span>{dirty[path] && <i/>}<span className="real-tab-close" onClick={e => { e.stopPropagation(); setOpenFiles(current => current.filter(item => item !== path)); if (activeFile === path) { const next = openFiles.find(item => item !== path); if (next) loadFile(next).catch(err => notify(err.message)); } }}>×</span></button>)}<div className="real-tab-spacer"/><button className="real-run" onClick={runFile}><Play size={14} fill="currentColor"/><span>{Capacitor.isNativePlatform() ? "Run in Termux" : "Run"}</span></button></div>
+        <div className="real-tabbar">{openFiles.map(path => <button key={path} className={"real-tab " + (activeFile === path ? "selected" : "")} onClick={() => loadFile(path).catch(e => notify(e.message))}>{fileIcon(path)}<span>{path.split("/").pop()}</span>{dirty[path] && <i/>}<span className="real-tab-close" onClick={e => { e.stopPropagation(); setOpenFiles(current => current.filter(item => item !== path)); if (activeFile === path) { const next = openFiles.find(item => item !== path); if (next) loadFile(next).catch(err => notify(err.message)); } }}>×</span></button>)}<div className="real-tab-spacer"/><button className="real-run" onClick={runFile}><Play size={14} fill="currentColor"/><span>{"Run"}</span></button></div>
         <div className="real-breadcrumb"><span>workspace</span><ChevronRight size={13}/><span>{activeFile.split("/").slice(0,-1).join("/") || "root"}</span><ChevronRight size={13}/><strong>{activeFile.split("/").pop()}</strong></div>
         <section className="real-editor"><Editor height="100%" path={activeFile || "untitled"} language={languageFor(activeFile)} theme="vs-dark" value={contents[activeFile] ?? ""} onChange={value => { setContents(current => ({ ...current, [activeFile]:value ?? "" })); setDirty(current => ({ ...current, [activeFile]:true })); }} onMount={onEditorMount} options={{ automaticLayout:true, minimap:{enabled:window.innerWidth > 900}, fontSize:13, fontFamily:"'JetBrains Mono', monospace", lineNumbers:"on", scrollBeyondLastLine:false, wordWrap:"off", tabSize:2, insertSpaces:true, smoothScrolling:true, cursorBlinking:"smooth", padding:{top:10,bottom:12}, suggestOnTriggerCharacters:true, quickSuggestions:true, bracketPairColorization:{enabled:true}, formatOnPaste:true, formatOnType:true, scrollbar:{verticalScrollbarSize:10,horizontalScrollbarSize:10}, stickyScroll:{enabled:false} }}/></section>
-        <section className={"real-terminal-panel " + (terminalOpen ? "" : "collapsed")}><div className="real-terminal-header"><div><span className="muted">PROBLEMS <b>0</b></span><span className="muted">OUTPUT</span><span className="selected"><TerminalSquare size={13}/> TERMINAL</span></div><aside><button title="Focus terminal input" onClick={() => terminalRef.current?.focus()}><Plus size={14}/></button><button title="Toggle terminal" onClick={() => setTerminalOpen(value => !value)}><ChevronDown size={15}/></button></aside></div>{terminalOpen && (sessionToken === "local" ? <div className="real-terminal-host" style={{color:"#9ba3b2",fontSize:12,lineHeight:1.7}}><div>{Capacitor.isNativePlatform() ? "Device-local workspace is ready. Open a .js, .py, or .sh file and tap Run in Termux to execute it." : "Device-local editing is ready. Files are saved in this browser. For a real shell, install the Android app with Termux or configure a secured workspace backend."}</div></div> : <div className="real-terminal-host" ref={terminalHostRef} onClick={() => terminalRef.current?.focus()}/>) }</section>
+        <section className={"real-terminal-panel " + (terminalOpen ? "" : "collapsed")}><div className="real-terminal-header"><div><span className="muted">PROBLEMS <b>0</b></span><span className="muted">OUTPUT</span><span className="selected"><TerminalSquare size={13}/> TERMINAL</span></div><aside><button title="Focus terminal input" onClick={() => terminalRef.current?.focus()}><Plus size={14}/></button><button title="Toggle terminal" onClick={() => setTerminalOpen(value => !value)}><ChevronDown size={15}/></button></aside></div>{terminalOpen && (sessionToken === "local" ? <div className="real-terminal-host" style={{color:"#9ba3b2",fontSize:12,lineHeight:1.7}}><div>{Capacitor.isNativePlatform() ? "Built-in native terminal is ready. No external terminal app is required." : "Device-local editing is ready. Files are saved in this browser. Configure a workspace backend for a server shell."}</div></div> : <div className="real-terminal-host" ref={terminalHostRef} onClick={() => terminalRef.current?.focus()}/>) }</section>
         <footer className="real-statusbar"><span><GitBranch size={12}/> main</span><span>{languageFor(activeFile)}</span><span>{dirty[activeFile] ? "Unsaved changes" : "Saved"}</span><span className="real-status-spacer"/><span>{connected ? (sessionToken === "local" ? "On-device files" : "Workspace connected") : status}</span></footer>
       </main>
     </div>
