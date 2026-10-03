@@ -23,8 +23,19 @@ const kotlin=main.endsWith(".kt");
 const importLine=kotlin?"import dev.hunterkritik.vsmobile.terminal.NativeTerminalPlugin":"import dev.hunterkritik.vsmobile.terminal.NativeTerminalPlugin;";
 if(!sourceText.includes(importLine)){const pos=sourceText.indexOf("\n");sourceText=sourceText.slice(0,pos+1)+importLine+"\n"+sourceText.slice(pos+1);}
 if(!sourceText.includes("registerPlugin(NativeTerminalPlugin")){
-  if(kotlin){sourceText=sourceText.replace(/class MainActivity\\s*:\\s*BridgeActivity\\(\\)\\s*\\{/,"class MainActivity : BridgeActivity() {\\n    override fun onCreate(savedInstanceState: android.os.Bundle?) {\\n        super.onCreate(savedInstanceState)\\n        registerPlugin(NativeTerminalPlugin::class.java)\\n    }");}
-  else {sourceText=sourceText.replace(/public class MainActivity extends BridgeActivity\\s*\\{/,"public class MainActivity extends BridgeActivity {\\n    @Override\\n    public void onCreate(android.os.Bundle savedInstanceState) {\\n        super.onCreate(savedInstanceState);\\n        registerPlugin(NativeTerminalPlugin.class);\\n    }");}
+  if(kotlin){
+    const classPos=sourceText.indexOf("class MainActivity");
+    const bodyPos=classPos>=0?sourceText.indexOf("{",classPos):-1;
+    if(bodyPos<0) throw new Error("Could not locate MainActivity class body");
+    const block="\\n    override fun onCreate(savedInstanceState: android.os.Bundle?) {\\n        registerPlugin(NativeTerminalPlugin::class.java)\\n        super.onCreate(savedInstanceState)\\n    }";
+    sourceText=sourceText.slice(0,bodyPos+1)+block+sourceText.slice(bodyPos+1);
+  } else {
+    const classPos=sourceText.indexOf("public class MainActivity");
+    const bodyPos=classPos>=0?sourceText.indexOf("{",classPos):-1;
+    if(bodyPos<0) throw new Error("Could not locate MainActivity class body");
+    const block="\\n    @Override\\n    public void onCreate(android.os.Bundle savedInstanceState) {\\n        registerPlugin(NativeTerminalPlugin.class);\\n        super.onCreate(savedInstanceState);\\n    }";
+    sourceText=sourceText.slice(0,bodyPos+1)+block+sourceText.slice(bodyPos+1);
+  }
 }
 fs.writeFileSync(main,sourceText);
 console.log("NativeTerminalPlugin installed into "+main);
