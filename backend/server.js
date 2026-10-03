@@ -14,7 +14,7 @@ const ROOT = path.resolve(process.env.WORKSPACE_DIR || path.join(process.cwd(), 
 const TOKEN = process.env.WORKSPACE_TOKEN || crypto.randomBytes(32).toString("hex");
 const MAX_FILE_BYTES = 1024 * 1024;
 const blockedNames = new Set([".git", "node_modules", ".env", ".ssh", ".gnupg", ".aws"]);
-const allowedOrigins = new Set((process.env.WORKSPACE_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173").split(",").map(s => s.trim()).filter(Boolean));
+const allowedOrigins = new Set((process.env.WORKSPACE_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173,https://localhost").split(",").map(s => s.trim()).filter(Boolean));
 
 await fs.mkdir(ROOT, { recursive: true });
 await fs.mkdir(path.join(ROOT, "src"), { recursive: true });
@@ -27,6 +27,13 @@ app.use(express.json({ limit: "1mb" }));
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && !allowedOrigins.has(origin)) return res.status(403).send("Origin not allowed");
+  if (origin) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  }
+  if (req.method === "OPTIONS") return origin ? res.sendStatus(204) : res.sendStatus(403);
   if (["POST", "PUT", "DELETE"].includes(req.method) && !origin) return res.status(403).send("Origin header required");
   next();
 });
