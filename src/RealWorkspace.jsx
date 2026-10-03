@@ -339,7 +339,7 @@ export default function RealWorkspace() {
         const previewUrl = URL.createObjectURL(new Blob([contents[activeFile] ?? ""], { type:"text/html" }));
         window.open(previewUrl, "_blank", "noopener,noreferrer");
       } else {
-        notify("Browser local mode cannot execute code. Use the Android app with Termux or configure a workspace backend.");
+        notify("Browser local mode cannot execute code. Use the built-in Android terminal or configure a workspace backend.");
       }
       return;
     }
