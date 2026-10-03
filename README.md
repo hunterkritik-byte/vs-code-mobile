@@ -1,57 +1,54 @@
 # VS Code Mobile
 
-A touch-friendly, open-source coding workspace for Android-sized screens and the web.
+A touch-friendly, open-source coding workspace for Android-sized screens and the web. This is an independent community project, not an official Microsoft or Visual Studio Code product.
 
-> **Project status: early prototype.** This is an independent community project and is not affiliated with, endorsed by, or an official product of Microsoft or the Visual Studio Code team.
+## What works now
 
-## Current prototype
-
-- Responsive dark IDE-style layout for desktop and mobile browsers
-- Editable starter files with local browser persistence
-- File explorer, filename filtering, tabs, line numbers, and basic JavaScript syntax colors
-- Run JavaScript in an isolated sandboxed iframe and view console output
-- HTML preview in a sandboxed iframe
-- Demo terminal with `help`, `ls`, `pwd`, `cat <file>`, `echo <text>`, and `clear`
-- GitHub repository shortcut and a basic source-control placeholder
-- GitHub Actions workflow to build the web app on pushes and pull requests
-
-**Important:** The terminal is currently simulated. It does not provide a real shell, Node.js, Python, package installation, or access to the host device. The editor stores files in the current browser's local storage; it does not yet sync with GitHub.
+- Monaco Editor, the editor engine also used by VS Code, with syntax highlighting, bracket matching, suggestions, multiple tabs, and editor shortcuts.
+- A real terminal rendered by xterm.js and connected to a local PTY process through WebSockets.
+- File explorer with create, read, edit, save, delete, and refresh operations against real files on disk.
+- JavaScript execution through Node.js from the terminal and HTML preview.
+- Responsive layout for narrow screens and desktop browsers.
 
 ## Run locally
 
-Requires Node.js 20 or later.
+Requires Node.js 20+ and a working native build toolchain for node-pty if a prebuilt binary is not available.
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
-Open the local URL printed by Vite. To make a production build:
+On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Open the Vite URL printed in the terminal, normally `http://localhost:5173`.
 
-```bash
-npm run build
-npm run preview
-```
+The backend creates a `workspace/` folder in the repository. To edit a different local project, set `WORKSPACE_DIR` in `.env` to its absolute path. Restart the backend after changing environment settings.
+
+## Important security boundary
+
+**The terminal is a real shell running with the current operating-system user's permissions.** The backend binds to `127.0.0.1` by default and checks browser origins and a per-process session token. Do not change the host to `0.0.0.0`, expose this backend to the public internet, or use it as a multi-user cloud service. Origin checks and a session token are not a substitute for OS/container isolation.
+
+A hosted version needs per-user authentication, isolated ephemeral containers or VMs, CPU/memory/time limits, storage quotas, network egress policy, secret management, audit logging, and security review. The current backend is intended for trusted local development only.
+
+## Android and web
+
+The responsive UI runs in a mobile browser. A proper installable Android app can be added with Capacitor, but a mobile app still needs a reachable workspace backend to provide a real terminal. Android's app sandbox does not automatically provide a Linux development shell.
+
+## About VS Code source
+
+The project currently uses the separately published Monaco Editor and xterm.js libraries rather than copying the entire VS Code desktop application. This keeps the web app smaller and makes mobile adaptation practical. The Visual Studio Code source distribution is available under Microsoft's source repository and license terms; the VS Code product name, marketplace access, and Microsoft branding have separate restrictions. This project is independent and unaffiliated.
 
 ## Roadmap
 
-1. Replace the starter textarea with Monaco or another mobile-tested editor.
-2. Add proper project import/export and file management.
-3. Add GitHub sign-in using a secure, documented authentication flow.
-4. Build a real terminal through a separately deployed, authenticated workspace backend (never expose arbitrary shell execution from an unauthenticated web server).
-5. Package the web experience for Android and test on physical devices.
-6. Add tests, accessibility checks, security review, and release automation.
-
-## Security notes
-
-- JavaScript preview runs inside an iframe sandbox without same-origin privileges.
-- The demo terminal only simulates a small set of commands.
-- Do not paste secrets into the prototype. Local browser storage is not an encrypted secret store.
-- A production terminal needs authentication, isolation, resource limits, and explicit authorization.
+1. Add project import/export and Git operations in the UI.
+2. Add automated tests for file API path validation, saves, and terminal lifecycle.
+3. Add Capacitor Android packaging and test on real devices.
+4. Design a hardened isolated backend before offering remote/cloud terminals.
+5. Add accessible keyboard/touch controls and mobile editor ergonomics.
 
 ## Contributing
 
-Issues and pull requests are welcome. Please describe the device/browser tested and include reproduction steps for bugs.
+Issues and pull requests are welcome. Include your OS, Node.js version, device/browser, and reproduction steps.
 
 ## License
 
