@@ -6,7 +6,7 @@ import { Braces, ChevronDown, ChevronRight, Code2, FileCode2, FilePlus2, Files, 
 import "@xterm/xterm/css/xterm.css";
 import "./workspace.css";
 
-const WORKSPACE_BASE = (import.meta.env.VITE_WORKSPACE_API_URL || "").replace(/\\/$/, "");
+const WORKSPACE_BASE = (import.meta.env.VITE_WORKSPACE_API_URL || "").replace(/\/$/, "");
 const API = WORKSPACE_BASE + "/api";
 function terminalUrl() {
   const base = WORKSPACE_BASE ? new URL(WORKSPACE_BASE) : new URL(window.location.href);
