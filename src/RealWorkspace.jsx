@@ -373,7 +373,7 @@ export default function RealWorkspace() {
       <span className={"connection-pill " + (connected ? "is-connected" : "")}><i/>{connected ? "Workspace" : "Connecting"}</span>
       <button className="real-icon-btn desktop-only" title="Search files" onClick={() => { setActivePanel("search"); setSidebarOpen(true); }}><Search size={17}/></button>
       <button className="real-icon-btn desktop-only" title="Refresh files" onClick={() => refreshFiles().catch(e => notify(e.message))}><RefreshCw size={16}/></button>
-      <a className="real-github-btn" href="https://github.com/hunterkritik-byte/vs-code-mobile" target="_blank" rel="noreferrer"><Github size={16}/><span>GitHub</span></a>
+      <a className="real-github-btn" href="https://github.com/hunterkritik-byte/vs-code-mobile" target="_blank" rel="noreferrer"><GitBranch size={16}/><span>GitHub</span></a>
     </header>
     <div className="real-workspace">
       <nav className="real-activity" aria-label="Workspace views">
