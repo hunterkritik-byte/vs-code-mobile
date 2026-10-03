@@ -56,11 +56,11 @@ The Android APK includes a native Termux bridge for running the current JavaScri
    Then fully stop and reopen Termux. Only enable this for apps you trust.
 4. Install a newly built VS Code Mobile APK. Open a `.js`, `.py`, or `.sh` file and tap **Run in Termux**. The app sends the current editor contents to `~/VSCodeMobile/` in Termux and opens a Termux session to execute it.
 
-The first Termux bridge version runs code in Termux's own terminal window; it does not stream terminal output back into the embedded xterm panel. The file explorer's create/read/save/delete operations still require the separate workspace backend. The next integration step is a user-selected shared project folder so editor files and Termux files can stay in sync without exposing a shell server.
+The Termux bridge runs code in Termux's own terminal window; it does not stream terminal output back into the embedded xterm panel. File create/read/edit/save/delete now work in local mode without a backend, and changes persist in the app's WebView storage. The current Run action sends the active editor contents to a file in `~/VSCodeMobile/` in Termux. This is a copy for execution, not a shared folder: edits made directly in Termux do not automatically sync back into the editor.
 
 ## Connecting the Android app to a workspace backend
 
-The app needs a reachable workspace backend for real files and a terminal. To build the web bundle against a backend URL, set `VITE_WORKSPACE_API_URL` before building, for example:
+The optional workspace backend provides a shared filesystem, embedded interactive terminal, and HTML preview. Without it, the editor automatically falls back to a local workspace saved in browser/app storage; this mode supports file create/read/edit/save/delete but does not provide an embedded shell. To build the web bundle against a backend URL, set `VITE_WORKSPACE_API_URL` before building, for example:
 
 ```bash
 VITE_WORKSPACE_API_URL=https://your-workspace-host.example npm run build
@@ -74,7 +74,7 @@ For a local Android device, the backend host must be reachable from the phone ov
 
 ## Web deployment
 
-A static Vercel deployment can serve the editor UI, but Vercel static hosting does not run this Node.js PTY backend. Set `VITE_WORKSPACE_API_URL` only to a separately hosted, secured backend that is appropriate for your use case. Without a reachable backend, the editor cannot access real project files or start a terminal.
+A static Vercel deployment can serve the editor UI and local-first file editor, but Vercel static hosting does not run this Node.js PTY backend. In static mode, files are saved in that browser's local storage and are not automatically synced across browsers/devices. Set `VITE_WORKSPACE_API_URL` only to a separately hosted, secured backend if you need a shared filesystem and embedded terminal.
 
 ## Project scope and branding
 
