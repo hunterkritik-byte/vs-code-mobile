@@ -44,7 +44,7 @@ app.get("/api/session", (req, res) => {
 });
 app.use("/api", (req, res, next) => {
   if (req.path === "/session") return next();
-  const token = (req.headers.authorization || "").replace(/^Bearer\\s+/i, "");
+  const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
   if (token.length !== TOKEN.length || !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(TOKEN))) {
     return res.status(401).send("Workspace authentication required");
   }
