@@ -76,6 +76,12 @@ jobs:
                       intent.putExtra("com.termux.RUN_COMMAND_WORKDIR", "/data/data/com.termux/files/home");
                       intent.putExtra("com.termux.RUN_COMMAND_BACKGROUND", false);
                       getContext().startService(intent);
+                      // Bring Termux to the foreground so stdout/stderr are visible.
+                      Intent launchTermux = getContext().getPackageManager().getLaunchIntentForPackage("com.termux");
+                      if (launchTermux != null) {
+                          launchTermux.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          getContext().startActivity(launchTermux);
+                      }
                       JSObject result = new JSObject();
                       result.put("started", true);
                       call.resolve(result);
