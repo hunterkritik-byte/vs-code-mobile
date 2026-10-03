@@ -34,11 +34,11 @@ const gradlePath = fs.existsSync(gradle) ? gradle : gradleKts;
 if (!gradlePath) throw new Error("Android app Gradle file not found");
 let g = fs.readFileSync(gradlePath,"utf8");
 if (gradlePath.endsWith(".kts")) {
-  if (!g.includes('ndkVersion')) g=g.replace(/android\\s*\\{/,'android {\\n    ndkVersion = "27.3.13750724"');
-  if (!g.includes('externalNativeBuild')) g=g.replace(/android\\s*\\{/,'android {\\n    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }');
+  if (!g.includes('ndkVersion')) g=g.replace(/android\s*\{/,'android {\n    ndkVersion = "27.3.13750724"');
+  if (!g.includes('externalNativeBuild')) g=g.replace(/android\s*\{/,'android {\n    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }');
 } else {
-  if (!g.includes('ndkVersion')) g=g.replace(/android\\s*\\{/,'android {\\n    ndkVersion "27.3.13750724"');
-  if (!g.includes('externalNativeBuild')) g=g.replace(/android\\s*\\{/,'android {\\n    externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }');
+  if (!g.includes('ndkVersion')) g=g.replace(/android\s*\{/,'android {\n    ndkVersion "27.3.13750724"');
+  if (!g.includes('externalNativeBuild')) g=g.replace(/android\s*\{/,'android {\n    externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }');
 }
 fs.writeFileSync(gradlePath,g);
 console.log("Installed native PTY sources and Gradle CMake integration.");
