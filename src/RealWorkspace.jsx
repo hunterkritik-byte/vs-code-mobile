@@ -50,9 +50,24 @@ export default function RealWorkspace() {
       ...options,
       headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(sessionToken ? { Authorization: "Bearer " + sessionToken } : {}), ...options.headers }
     });
-    if (!response.ok) throw new Error((await response.text()) || "Request failed (" + response.status + ")");
+    const responseText = response.status === 204 ? "" : await response.text();
+    if (!response.ok) {
+      throw new Error(responseText || "Request failed (" + response.status + ")");
+    }
     if (response.status === 204) return null;
-    return response.json();
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      const preview = responseText.trim().slice(0, 80).toLowerCase();
+      if (preview.startsWith("<!doctype") || preview.startsWith("<html") || preview.startsWith("<")) {
+        throw new Error("Workspace backend not reached: the app received an HTML page instead of JSON. Configure VITE_WORKSPACE_API_URL to a reachable workspace backend, then rebuild the app.");
+      }
+      throw new Error("Workspace backend returned a non-JSON response. Check the backend URL and server logs.");
+    }
+    try {
+      return JSON.parse(responseText);
+    } catch {
+      throw new Error("Workspace backend returned invalid JSON. Check the backend URL and server logs.");
+    }
   }, [sessionToken]);
 
   const refreshFiles = useCallback(async () => {
