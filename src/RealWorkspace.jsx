@@ -4,7 +4,7 @@ const NativeTerminal = registerPlugin("NativeTerminal");
 import Editor from "@monaco-editor/react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
-import { Braces, ChevronDown, ChevronRight, Code2, FileCode2, FilePlus2, Files, FolderOpen, Github, GitBranch, Play, Plus, RefreshCw, Search, Smartphone, TerminalSquare, X } from "lucide-react";
+import { Braces, ChevronDown, ChevronRight, Code2, FileCode2, FilePlus2, Files, FolderOpen, GitBranch, Play, Plus, RefreshCw, Search, Smartphone, TerminalSquare, X } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import "./workspace.css";
 
