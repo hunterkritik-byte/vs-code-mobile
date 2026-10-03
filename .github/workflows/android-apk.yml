@@ -47,6 +47,68 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+          mkdir -p android/app/src/main/java/dev/hunterkritik/vscodemobile
+          cat > android/app/src/main/java/dev/hunterkritik/vscodemobile/TermuxBridgePlugin.java <<'JAVA'
+          package dev.hunterkritik.vscodemobile;
+
+          import android.content.Intent;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "TermuxBridge")
+          public class TermuxBridgePlugin extends Plugin {
+              @PluginMethod
+              public void runCommand(PluginCall call) {
+                  String command = call.getString("command");
+                  if (command == null || command.trim().isEmpty()) {
+                      call.reject("A command is required");
+                      return;
+                  }
+                  try {
+                      getContext().getPackageManager().getPackageInfo("com.termux", 0);
+                      Intent intent = new Intent("com.termux.RUN_COMMAND");
+                      intent.setClassName("com.termux", "com.termux.app.RunCommandService");
+                      intent.putExtra("com.termux.RUN_COMMAND_PATH", "/data/data/com.termux/files/usr/bin/bash");
+                      intent.putExtra("com.termux.RUN_COMMAND_ARGUMENTS", new String[] { "-lc", command });
+                      intent.putExtra("com.termux.RUN_COMMAND_WORKDIR", "/data/data/com.termux/files/home");
+                      intent.putExtra("com.termux.RUN_COMMAND_BACKGROUND", false);
+                      getContext().startService(intent);
+                      JSObject result = new JSObject();
+                      result.put("started", true);
+                      call.resolve(result);
+                  } catch (Exception error) {
+                      call.reject("Could not launch Termux. Install Termux and enable allow-external-apps.", error);
+                  }
+              }
+          }
+          JAVA
+          cat > android/app/src/main/java/dev/hunterkritik/vscodemobile/MainActivity.java <<'JAVA'
+          package dev.hunterkritik.vscodemobile;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(TermuxBridgePlugin.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          JAVA
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          marker = "    <application"
+          additions = '    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />\\n    <queries><package android:name="com.termux" /></queries>\\n'
+          if "com.termux.permission.RUN_COMMAND" not in s:
+              s = s.replace(marker, additions + marker, 1)
+          p.write_text(s)
+          PY
       - name: Build installable debug APK
         working-directory: android
         run: |
