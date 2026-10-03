@@ -57,12 +57,14 @@ export default function RealWorkspace() {
   }, [request]);
 
   const loadFile = useCallback(async path => {
-    const result = await request("/file?path=" + encodeURIComponent(path));
-    setContents(current => ({ ...current, [path]: result.content }));
+    if (contents[path] === undefined) {
+      const result = await request("/file?path=" + encodeURIComponent(path));
+      setContents(current => ({ ...current, [path]: result.content }));
+    }
     setActiveFile(path);
     setOpenFiles(current => current.includes(path) ? current : [...current, path]);
     setSidebarOpen(false);
-  }, [request]);
+  }, [contents, request]);
 
   useEffect(() => {
     let cancelled = false;
