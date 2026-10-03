@@ -1,5 +1,9 @@
 # VS Code Mobile — Independent Mobile Development Environment
 
+[![CI](https://github.com/hunterkritik-byte/vs-code-mobile/actions/workflows/security.yml/badge.svg)](https://github.com/hunterkritik-byte/vs-code-mobile/actions/workflows/security.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/hunterkritik-byte/vs-code-mobile/badge)](https://securityscorecards.dev/viewer/?uri=github.com/hunterkritik-byte/vs-code-mobile)
+[![Sponsor](https://img.shields.io/badge/Sponsor-hunterkritik--byte-blue?logo=github)](https://github.com/hunterkritik-byte/vs-code-mobile#sponsorship)
+
 > **Sponsor & partnership inquiries:** [hunterkritik@gmail.com](mailto:hunterkritik@gmail.com)
 
 A community-built, touch-first development environment for Android and the web. The project combines a mobile code editor, workspace filesystem, terminal UI, and local execution into one independent developer tool.
@@ -155,6 +159,13 @@ Before production remote execution, the project must implement:
 Report security issues privately through the repository's security policy rather than publishing an exploitable proof of concept.
 
 ## Sponsorship
+
+This project is structured to be transparent about sponsorship: funding supports public engineering milestones rather than promised outcomes or certifications.
+
+**Sponsor / partnership contact:** hunterkritik@gmail.com
+
+**Potential sponsor-supported milestones:** native PTY, Android compatibility testing, security hardening, isolated developer runtimes, reproducible releases, accessibility testing, and independent security review.
+
 
 This project is independently maintained and welcomes sponsorship from individuals, companies, cloud providers, hardware vendors, and developer-tool organizations.
 
