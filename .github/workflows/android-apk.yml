@@ -39,7 +39,7 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724" "cmake;3.22.1"
 
       - name: Install npm dependencies
-        run: npm install
+        run: npm install --ignore-scripts
 
       - name: Build web
         run: npm run build
