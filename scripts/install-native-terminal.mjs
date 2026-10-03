@@ -21,23 +21,22 @@ if(!main) throw new Error("Could not find Capacitor MainActivity");
 let sourceText=fs.readFileSync(main,"utf8");
 const kotlin=main.endsWith(".kt");
 const importLine=kotlin?"import dev.hunterkritik.vsmobile.terminal.NativeTerminalPlugin":"import dev.hunterkritik.vsmobile.terminal.NativeTerminalPlugin;";
-if(!sourceText.includes(importLine)){const pos=sourceText.indexOf("\n");sourceText=sourceText.slice(0,pos+1)+importLine+"\n"+sourceText.slice(pos+1);}
-if(!sourceText.includes("registerPlugin(NativeTerminalPlugin")){
-  if(kotlin){
-    const classPos=sourceText.indexOf("class MainActivity");
-    const bodyPos=classPos>=0?sourceText.indexOf("{",classPos):-1;
-    if(bodyPos<0) throw new Error("Could not locate MainActivity class body");
-    const block="\\n    override fun onCreate(savedInstanceState: android.os.Bundle?) {\\n        registerPlugin(NativeTerminalPlugin::class.java)\\n        super.onCreate(savedInstanceState)\\n    }";
-    sourceText=sourceText.slice(0,bodyPos+1)+block+sourceText.slice(bodyPos+1);
-  } else {
-    const classPos=sourceText.indexOf("public class MainActivity");
-    const bodyPos=classPos>=0?sourceText.indexOf("{",classPos):-1;
-    if(bodyPos<0) throw new Error("Could not locate MainActivity class body");
-    const block="\\n    @Override\\n    public void onCreate(android.os.Bundle savedInstanceState) {\\n        registerPlugin(NativeTerminalPlugin.class);\\n        super.onCreate(savedInstanceState);\\n    }";
-    sourceText=sourceText.slice(0,bodyPos+1)+block+sourceText.slice(bodyPos+1);
-  }
+if(!sourceText.includes("NativeTerminalPlugin")) {
+  const pos=sourceText.indexOf("\n");
+  sourceText=sourceText.slice(0,pos+1)+importLine+"\n"+sourceText.slice(pos+1);
+}
+if(!sourceText.includes("registerPlugin(NativeTerminalPlugin")) {
+  const classPos=sourceText.indexOf("class MainActivity");
+  const bodyPos=classPos>=0?sourceText.indexOf("{",classPos):-1;
+  if(bodyPos<0) throw new Error("Could not locate MainActivity class body");
+  const block=kotlin
+    ? "\n    override fun onCreate(savedInstanceState: android.os.Bundle?) {\n        super.onCreate(savedInstanceState)\n        registerPlugin(NativeTerminalPlugin::class.java)\n    }"
+    : "\n    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        registerPlugin(NativeTerminalPlugin.class);\n    }";
+  sourceText=sourceText.slice(0,bodyPos+1)+block+sourceText.slice(bodyPos+1);
 }
 fs.writeFileSync(main,sourceText);
+console.log("NativeTerminalPlugin installed and registered in "+main);
+
 console.log("NativeTerminalPlugin installed into "+main);
 const gradle = path.join(android,"app","build.gradle");
 const gradleKts = path.join(android,"app","build.gradle.kts");
