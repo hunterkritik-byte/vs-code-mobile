@@ -1,0 +1,23 @@
+package dev.hunterkritik.vsmobile.terminal;
+
+import android.os.Handler;
+import android.os.Looper;
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+import dev.hunterkritik.vsmobile.terminal.pty.PtyBridge;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+@CapacitorPlugin(name = "NativeTerminal")
+public class NativeTerminalPlugin extends Plugin {
+    private long handle=0L; private final AtomicBoolean running=new AtomicBoolean(false); private Thread reader; private final Handler main=new Handler(Looper.getMainLooper()); private File root;
+    @PluginMethod public void start(PluginCall call){ if(running.get()){call.resolve(new JSObject().put("message","\r\nNative PTY already running.\r\n"));return;} try{File appRoot=new File(getContext().getFilesDir(),"developer").getCanonicalFile(),workspace=new File(appRoot,"workspace").getCanonicalFile(),home=new File(appRoot,"home").getCanonicalFile(),prefix=new File(appRoot,"prefix").getCanonicalFile(),bin=new File(appRoot,"bin").getCanonicalFile(),tmp=new File(appRoot,"tmp").getCanonicalFile(); for(File d:new File[]{workspace,home,prefix,bin,tmp})if(!d.exists()&&!d.mkdirs())throw new IllegalStateException("Could not create "+d);root=appRoot;String requested=call.getString("cwd"),base=workspace.getPath();File cwd=requested==null||requested.trim().isEmpty()?workspace:new File(workspace,requested).getCanonicalFile();if(!cwd.equals(workspace)&&!cwd.getPath().startsWith(base+File.separator)){call.reject("Working directory escapes workspace");return;}if(!cwd.exists()&&!cwd.mkdirs()){call.reject("Could not create working directory");return;}String path=bin.getAbsolutePath()+":"+new File(prefix,"bin").getAbsolutePath()+":/system/bin:/system/xbin";handle=PtyBridge.start(cwd.getAbsolutePath(),home.getAbsolutePath(),path,"xterm-256color",80,24);if(handle==0L){call.reject("Could not create Android PTY");return;}running.set(true);reader=new Thread(()->{while(running.get())try{byte[] b=PtyBridge.read(handle,8192);if(b!=null&&b.length>0){String data=new String(b,StandardCharsets.UTF_8);main.post(()->{if(running.get())notifyListeners("output",new JSObject().put("data",data));});}else Thread.sleep(8);}catch(Throwable ignored){break;}},"vsmobile-pty-reader");reader.setDaemon(true);reader.start();call.resolve(new JSObject().put("message","\r\nVS Code Mobile native PTY\r\nWorkspace: "+workspace.getAbsolutePath()+"\r\nHOME: "+home.getAbsolutePath()+"\r\n\r\n"));}catch(Exception e){call.reject("Could not start Android PTY: "+e.getMessage());}}
+    @PluginMethod public void write(PluginCall call){String data=call.getString("data","");if(data.length()>16384){call.reject("Terminal input is too large");return;}if(!running.get()){call.reject("Terminal is not running");return;}int rc=PtyBridge.write(handle,data.getBytes(StandardCharsets.UTF_8));if(rc<0)call.reject("PTY write failed: "+rc);else call.resolve();}
+    @PluginMethod public void resize(PluginCall call){if(!running.get()){call.reject("Terminal is not running");return;}int c=call.getInt("cols",80),r=call.getInt("rows",24);if(c<2||c>400||r<2||r>200){call.reject("Invalid terminal size");return;}if(!PtyBridge.resize(handle,c,r))call.reject("PTY resize failed");else call.resolve();}
+    @PluginMethod public void writeFile(PluginCall call){String rel=call.getString("path");if(rel==null){call.reject("path is required");return;}String content=call.getString("content","");if(rel.contains("..")||rel.startsWith("/")||rel.indexOf('\0')>=0){call.reject("Invalid workspace path");return;}try{File ws=new File(root!=null?root:new File(getContext().getFilesDir(),"developer"),"workspace").getCanonicalFile(),target=new File(ws,rel).getCanonicalFile();if(!target.equals(ws)&&!target.getPath().startsWith(ws.getPath()+File.separator)){call.reject("Path escapes workspace");return;}if(content.getBytes(StandardCharsets.UTF_8).length>1024*1024){call.reject("File exceeds 1 MiB limit");return;}File p=target.getParentFile();if(p!=null)p.mkdirs();java.nio.file.Files.write(target.toPath(),content.getBytes(StandardCharsets.UTF_8));call.resolve(new JSObject().put("path",rel));}catch(Exception e){call.reject("File write failed: "+e.getMessage());}}
+    @PluginMethod public void stop(PluginCall call){stopInternal();call.resolve();} private void stopInternal(){if(handle!=0L)try{PtyBridge.stop(handle);}catch(Throwable ignored){}running.set(false);handle=0L;reader=null;} @Override protected void handleOnDestroy(){stopInternal();super.handleOnDestroy();}
+}
