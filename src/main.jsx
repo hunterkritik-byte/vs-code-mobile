@@ -42,6 +42,7 @@ function App() {
   const editorRef = useRef(null);
   const terminalRef = useRef(null);
   const iframeRef = useRef(null);
+  const htmlPreviewRef = useRef(null);
   const code = files[activeFile] ?? "";
   const lines = code.split("\n");
   const visibleFiles = useMemo(() => Object.keys(files).filter(p => p.toLowerCase().includes(searchText.toLowerCase())), [files, searchText]);
@@ -74,7 +75,7 @@ function App() {
     setRunOutput("");
     setShowRun(true);
     if (activeFile.endsWith(".html")) {
-      if (iframeRef.current) iframeRef.current.srcdoc = code;
+      if (htmlPreviewRef.current) htmlPreviewRef.current.srcdoc = code;
       setRunOutput("HTML loaded in the isolated preview frame.");
       return;
     }
@@ -158,7 +159,7 @@ function App() {
             }} spellCheck="false" autoCapitalize="off" autoCorrect="off" aria-label={"Edit " + activeFile}/>
           </div>
         </section>
-        {showRun && <section className="run-output"><div className="output-heading"><span><Play size={13}/> RUN OUTPUT</span><button className="subtle-icon" onClick={() => setShowRun(false)} aria-label="Close output"><X size={15}/></button></div><pre>{runOutput || "Running…"}</pre></section>}
+        {showRun && <section className="run-output"><div className="output-heading"><span><Play size={13}/> RUN OUTPUT</span><button className="subtle-icon" onClick={() => setShowRun(false)} aria-label="Close output"><X size={15}/></button></div>{activeFile.endsWith(".html") ? <iframe title="HTML preview" ref={htmlPreviewRef} className="html-preview" sandbox="allow-scripts"/> : <pre>{runOutput || "Running…"}</pre>}</section>}
         <section className={`terminal-panel ${terminalOpen ? "" : "terminal-collapsed"}`}>
           <div className="terminal-header"><div className="terminal-tabs"><span className="terminal-tab muted-tab">PROBLEMS <b>0</b></span><span className="terminal-tab muted-tab">OUTPUT</span><span className="terminal-tab active">TERMINAL</span></div>
             <div className="terminal-actions"><button className="subtle-icon" onClick={() => setTerminalOpen(!terminalOpen)} title="Toggle terminal"><ChevronDown size={15}/></button><button className="subtle-icon" onClick={() => setTerminalLines([])} title="Clear terminal"><X size={15}/></button></div>
