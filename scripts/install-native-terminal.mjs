@@ -33,13 +33,11 @@ const gradleKts = path.join(android,"app","build.gradle.kts");
 const gradlePath = fs.existsSync(gradle) ? gradle : gradleKts;
 if (!gradlePath) throw new Error("Android app Gradle file not found");
 let g = fs.readFileSync(gradlePath,"utf8");
-if (gradlePath.endsWith(".kts")) {
-  if (!g.includes("org.jetbrains.kotlin.android")) {
-    g=g.replace(/plugins\s*\{/,"plugins {\\n    id \"org.jetbrains.kotlin.android\" version \"1.9.25"");
-  }
-} else {
-  if (!g.includes("org.jetbrains.kotlin.android")) {
-    g=g.replace(/plugins\s*\{/,"plugins {\\n    id 'org.jetbrains.kotlin.android' version '1.9.25'");
+if (!g.includes("org.jetbrains.kotlin.android")) {
+  if (gradlePath.endsWith(".kts")) {
+    g = g.replace(/plugins\s*\{/, 'plugins {\n    id("org.jetbrains.kotlin.android") version "1.9.25"');
+  } else {
+    g = g.replace(/plugins\s*\{/, "plugins {\n    id 'org.jetbrains.kotlin.android' version '1.9.25'");
   }
 }
 if (gradlePath.endsWith(".kts")) {
