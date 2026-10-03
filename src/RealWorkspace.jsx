@@ -309,6 +309,15 @@ export default function RealWorkspace() {
       }
       return;
     }
+    if (sessionToken === "local") {
+      if (activeFile.endsWith(".html")) {
+        const previewUrl = URL.createObjectURL(new Blob([contents[activeFile] ?? ""], { type:"text/html" }));
+        window.open(previewUrl, "_blank", "noopener,noreferrer");
+      } else {
+        notify("Browser local mode cannot execute code. Use the Android app with Termux or configure a workspace backend.");
+      }
+      return;
+    }
     await saveFile(activeFile);
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) { notify("Connect the terminal to run code."); return; }
