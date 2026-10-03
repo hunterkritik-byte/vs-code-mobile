@@ -44,8 +44,8 @@ function writeLocalFiles(files) {
 }
 function normalizeLocalPath(path) {
   if (typeof path !== "string") throw new Error("Enter a file path.");
-  const normalized = path.trim().replace(/\\/g, "/").replace(/^\/+/, "");
-  if (!normalized || normalized.split("/").some(part => !part || part === "." || part === "..") || normalized.includes("\0")) {
+  const normalized = path.trim().replace(/^\/+/, "");
+  if (!normalized || normalized.includes(String.fromCharCode(92)) || normalized.includes(String.fromCharCode(0)) || normalized.split("/").some(part => !part || part === "." || part === "..")) {
     throw new Error("Invalid file path. Use a relative path such as src/main.js.");
   }
   return normalized;
