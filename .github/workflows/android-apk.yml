@@ -54,6 +54,11 @@ jobs:
       - name: Install native PTY
         run: npm run android:native
 
+      - name: Verify NativeTerminal registration
+        run: |
+          grep -R "registerPlugin(NativeTerminalPlugin" android/app/src/main/java android/app/src/main/kotlin
+          grep -R '@CapacitorPlugin(name = "NativeTerminal")' android/app/src/main/java android/app/src/main/kotlin
+
       - name: Verify native Kotlin sources
         run: |
           test -s android/app/src/main/java/dev/hunterkritik/vsmobile/terminal/NativeTerminalPlugin.java
