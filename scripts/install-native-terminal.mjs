@@ -32,20 +32,41 @@ const gradle = path.join(android,"app","build.gradle");
 const gradleKts = path.join(android,"app","build.gradle.kts");
 const gradlePath = fs.existsSync(gradle) ? gradle : gradleKts;
 if (!gradlePath) throw new Error("Android app Gradle file not found");
+
 let g = fs.readFileSync(gradlePath,"utf8");
-if (!g.includes("org.jetbrains.kotlin.android")) {
-  if (gradlePath.endsWith(".kts")) {
-    g = g.replace(/plugins\s*\{/, 'plugins {\n    id("org.jetbrains.kotlin.android") version "1.9.25"');
-  } else {
-    g = g.replace(/plugins\s*\{/, "plugins {\n    id 'org.jetbrains.kotlin.android' version '1.9.25'");
+const rootGradle = path.join(android,"build.gradle");
+if (fs.existsSync(rootGradle)) {
+  let root = fs.readFileSync(rootGradle,"utf8");
+  if (!root.includes("kotlin-gradle-plugin")) {
+    const dep = '        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25"';
+    const buildscript = root.indexOf("buildscript {");
+    if (buildscript >= 0) {
+      const deps = root.indexOf("dependencies {", buildscript);
+      if (deps >= 0) {
+        const close = root.indexOf("}", deps);
+        if (close >= 0) root = root.slice(0, close) + "\n" + dep + root.slice(close);
+      }
+    } else {
+      root = 'buildscript {\n    repositories { google(); mavenCentral() }\n    dependencies {\n' + dep + '\n    }\n}\n\n' + root;
+    }
+    fs.writeFileSync(rootGradle,root);
   }
 }
+
 if (gradlePath.endsWith(".kts")) {
-  if (!g.includes('ndkVersion')) g=g.replace(/android\s*\{/,'android {\n    ndkVersion = "27.3.13750724"');
-  if (!g.includes('externalNativeBuild')) g=g.replace(/android\s*\{/,'android {\n    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }');
+  if (!g.includes('org.jetbrains.kotlin.android')) {
+    g = g.replace(/plugins\\s*\\{/, 'plugins {\n    id("org.jetbrains.kotlin.android") version "1.9.25"');
+  }
+} else if (!g.includes("org.jetbrains.kotlin.android")) {
+  g = "apply plugin: 'org.jetbrains.kotlin.android'\n" + g;
+}
+
+if (gradlePath.endsWith(".kts")) {
+  if (!g.includes("ndkVersion")) g=g.replace(/android\\s*\\{/,'android {\n    ndkVersion = "27.3.13750724"');
+  if (!g.includes("externalNativeBuild")) g=g.replace(/android\\s*\\{/,'android {\n    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }');
 } else {
-  if (!g.includes('ndkVersion')) g=g.replace(/android\s*\{/,'android {\n    ndkVersion "27.3.13750724"');
-  if (!g.includes('externalNativeBuild')) g=g.replace(/android\s*\{/,'android {\n    externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }');
+  if (!g.includes("ndkVersion")) g=g.replace(/android\\s*\\{/,'android {\n    ndkVersion "27.3.13750724"');
+  if (!g.includes("externalNativeBuild")) g=g.replace(/android\\s*\\{/,'android {\n    externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }');
 }
 fs.writeFileSync(gradlePath,g);
-console.log("Installed native PTY sources and Gradle CMake integration.");
+console.log("Installed native PTY sources, Kotlin plugin, and Gradle CMake integration.");
